@@ -1,0 +1,91 @@
+---
+title: "Entwurf: Data Manipulation and Preprocessing"
+author: "Liane Strauch"
+date: "29 4 2021"
+output: html_document
+---
+
+# Block 1: Getting started
+
+## Grundideen
+```{r}
+library(readxl)
+BKA_first <- read_excel("../data/KR-F-01-T01-Kreise-Faelle-HZ_xls (1).xlsx")
+View(BKA_first)
+
+mean(BKA_first$`KfS = kreisfreie Stadt`)
+class(BKA_first$`KfS = kreisfreie Stadt`)
+mean(as.numeric((BKA_first$`KfS = kreisfreie Stadt`)))
+mean(as.numeric((BKA_first$`KfS = kreisfreie Stadt`)), na.rm = TRUE)
+```
+
+## einlesen und die verschiedenen Möglichkeiten (encoding, seperator, colClass) (Ressourcesn verlinken)
+Probleme vermeiden durch richtiges Einlesen
+```{r}
+args(read_excel)
+?read_excel
+
+columns <- c("Schluessel", "Straftat", "Gemeindeschluessel", "Stadt_Landkreis", "Kreisart", "erfasste_Faelle_Anzahl", "erfasste_Faelle_Prozent", "ef_Versuche_Anzahl", "ef_Versuche_Prozent", "Schusswaffe_gedroht", "Schusswaffe_geschossen", "Aufklaerung_Anzahl", "Aufklaerungsquote", "TV_insgesamt", "TV_maennlich", "TV_weiblich", "nd_TV_Anzahl", "nd_TV_Anteil", "Sort", "leer","GemSchl", "Gem", "EW")
+
+BKA_preprocessed <- read_excel("../data/KR-F-01-T01-Kreise-Faelle-HZ_xls (1).xlsx", 
+    col_names = columns, skip = 9)
+
+
+```
+
+## pipeline & Übersichtsfunktionen
+```{r}
+head(BKA_preprocessed)
+str(BKA_preprocessed)
+names(BKA_preprocessed)
+names(BKA_first)
+
+library(tidyverse)
+
+BKA_first %>%
+  glimpse()
+
+```
+
+### Die weite Welt des Importieren
+Hierzu kann man vermutlich eine Vorelsung halten. Aus zeitlichen Gründen hier nur eine weitere Möglichkeit:
+```{r}
+library(readr)
+args(read_delim)
+?read_delim
+```
+
+## Aufgabe
+Das BKA stellt ihre Fallstatistiken auch im csv-format zum Downloaden bereit.
+Mithilfe der read_delim Funktion sollt ihr die Datei runterladen und dabei sicherstellen, dass die Dateinamen stimmen und die Dateitypen für jede Zeile Sinn ergibt (müssen noch nicht die optimalsten Dateitypen sein, aber in die richtige Richtung gehen)
+Kontrolliert euern Import anschließend. 
+Welches (unerwartete) Problem ist aufgetreten? - Umlaute
+Habt ihr Ideen, wie man dieses Problem lösen kann??
+```{r}
+#BKA_csv <- read_delim("../data/KR-F-01-T01-Kreise-Faelle-HZ_csv.csv",
+#    ";", col_names = columns, trim_ws = TRUE, skip = 2)
+
+#glimpse(BKA_csv)
+
+```
+
+
+# Block 2: Datentypen & Outlier
+
+- Datentypen passen? factor, ... (vectorize?) (wenn es um Funktionen geht: https://forcats.tidyverse.org/)
+- NA, Inf, ... values? (erwähnen der grafischen Analyse)
+- outlier (-1, 99) // values general
+- out of range/expected values? anti & semi join erwähnen -> später mehr
+- (merged datasets), was ist mit einheiten (erwähnen)
+
+
+# Block 3: Manipulation 1 - Cols
+
+- manipulation (map, ...) + mutate + replace
+- col zu prozenten, ...
+- aus zwei mach eins - variablen (tidyverse)
+- groupby,...
+- right skewed -> log & effekt on analysis
+
+
+ 
