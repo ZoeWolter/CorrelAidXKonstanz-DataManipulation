@@ -1,0 +1,308 @@
+---
+title: "Data Manipulation and Preprocessing"
+author: "CorrelAid"
+date: "02 11 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Preparation
+
+```{r}
+pacman::p_load(tidyverse, naniar, readxl)
+```
+
+```{r}
+columns <- c("Schluessel", "Straftat", "Gemeindeschluessel", "Stadt_Landkreis", "Kreisart", "erfasste_Faelle_Anzahl", "erfasste_Faelle_Prozent", "ef_Versuche_Anzahl", "ef_Versuche_Prozent", "Schusswaffe_gedroht", "Schusswaffe_geschossen", "Aufklaerung_Anzahl", "Aufklaerungsquote", "TV_insgesamt", "TV_maennlich", "TV_weiblich", "nd_TV_Anzahl", "nd_TV_Anteil", "Sort", "leer","GemSchl", "Gem", "EW")
+
+BKA <- read_excel("data/KR-F-01-T01-Kreise-Faelle-HZ_xls (1).xlsx", 
+    col_names = columns, skip = 9)
+```
+
+
+# Block 2: Datentypen & Outlier
+## Vektor Basics
+
+Hier verwenden wir einige Funktionen aus dem **purrr** package, welches ein Core-Bestandteil des tidyverse ist, um einige Inkonsistenzen in Basis-R zu vermeiden.\
+\
+Ein Vektor ist eine Sequenz von Elementen desselben Datentyps.\
+\
+Es gibt zwei Typen von Vektoren:\
+```{r}
+```
+1. Atomare Vektoren, von diesen gibt es sechs Typen: logical, integer, double, character, complex, und raw. Wovon integer und double Vektoren zusammen als as numeric bezeichnet werden.\
+2. Listen, wobei Listen wiederum andere Listen enthalten können.\
+\
+Der Hauptunterschied zwischen atomaren Vektoren und Listen besteht darin, dass atomare Vektoren homogen sind, während Listen heterogen sein können.\
+\
+Jeder Vektor hat zwei wichtige Eigenschaften:
+```{r}
+```
+1. Seinen Typ, welcher mit `typeof()` bestimmt werden kann.
+```{r}
+x1 <- "This is a sentence"
+typeof(x1)
+
+x2 <- 20
+typeof(x2)
+
+x3 <- 20L
+typeof(x3)
+
+x4 <- c(5, "A", 100)
+typeof(x4)
+
+x5 <- list(x1, x2, x3, x4)
+typeof(x5)
+x5
+```
+2. Seine Länge, die mit `length()` bestimmt werden kann.
+```{r}
+length(x1)
+length(x2)
+length(x3)
+length(x4)
+length(x5)
+x5 %>% map(length)
+```
+
+Vektoren können auch beliebige zusätzliche Metadaten in Form von Attributes enthalten. Diese Attributes werden verwendet, um erweiterte (augmented) Vektoren zu erstellen.\
+Es gibt drei wichtige Arten von erweiterte Vektoren:\
+```{r}
+```
+* Factors werden auf integers aufgebaut\
+* Dates und date-times bauen auf numerics auf\
+* Data frames und tibbels werden basierend auf Listen aufgebaut\
+
+
+## Passen die Datentypen im BKA-Datensatz?
+
+Hier verwenden wir das **tibble** package, welches ebenfalls ein Core-Bestandteil des tidyverse ist.\
+\
+Fast alle Fuktionen aus dem tidyverse erzeugen tibbles. Sie sind deshalb eines der vereinheitlichenden Merkmale des tidyverse. Ein data frame kann mit der `as_tibble()` Funktion in einen tibble umgewandelt werden.
+Da `read_excel()` jedoch direkt schon einen tibble als output hat, ist dies in diesem Fall nicht nötig
+
+```{r}
+BKA
+glimpse(BKA)
+```
+
+Der Datentyp double ist für die numerischen Variablen, wie die Anzahl der erfassten Fälle oder die Anzahl der Aufklärungen passend.\
+Im Datensatz haben wir auch einige charactor Vektoren (Gemeindeschluessel, Stadt_Landkreis, ...), diese werden wir für die weitere Analyse in factors umwandeln.\
+R verwendet factors, um kategorische Variablen zu behandeln, d.h. Variablen, die eine feste und bekannte Menge möglicher Werte haben. Sie sind ebenfalls hilfreich, um character Vektoren neu zu ordnen und deren Darstellung zu verbessern. Das **forcats** package, welches Core-Bestandteil des tidyverse ist umfasst eine Reihe von Funktionen für den Umgang mit **cat**egorical Variablen.\
+\
+Einige Beispiele sind:
+```{r}
+```
+* `fct_reorder()` Neuordnung eines factors durch eine andere Variable.
+* `fct_infreq()` Neuordnung eines factors nach der Häufigkeit der Werte.
+* `fct_relevel()` Ändern der Reihenfolge eines factors von Hand.
+* `fct_lump()` Zusammenfassen der am wenigst\meist häufigen Werte eines Faktors zu "other".
+```{r}
+```
+Mehr darüber erfahrt ihr in `vignette("forcats")`.\
+\
+Hier fokusieren wir uns auf die Variable Kreisart und wandeln diese zunächst in einen factor um. Hier könnt entweder eine list mit den gültigen levels erstellen und diese dem levels Argument zuwesen (`factor(x, levels = list`) oder dieses Argument nicht spezifizieren, dann werden die levels in alphabetischer Reihenfolge aus den Daten entnommen.
+
+```{r}
+BKA$Kreisart <- BKA$Kreisart %>% factor()
+
+BKA %>% glimpse()
+```
+
+Jetzt können wir zum Beispiel die Reihenfolge der factor levels für Visualisierungen verändern. Beispielsweise wenn wir die Durschnittliche Anzahl gesamter Straftaten in einem Stadt/Landkreis je Kreisart bestimmen möchten.
+```{r}
+gesamt_kreisart <- BKA %>%
+  filter(Straftat == "Straftaten insgesamt") %>% 
+  group_by(Kreisart) %>%
+  summarise(
+    Straftaten = mean(erfasste_Faelle_Anzahl, na.rm = TRUE),
+  )
+
+ggplot(gesamt_kreisart, aes(Straftaten, Kreisart)) + geom_col()
+
+
+gesamt_kreisart %>%
+  mutate(Kreisart = fct_reorder(Kreisart, Straftaten)) %>%
+  ggplot(aes(Straftaten, Kreisart)) + 
+    geom_col()
+```
+
+
+## Haben wir NAs im Datensatz?
+
+Um diese Frage zu beantworten und die Häufigkeit deren Auftretens zu bestimmen nutzen wir das **naniar** package. Es ist immer wichtig sich das Codebook des Datensatzes genau anzuschauen. In diesem erhaltet ihr Angaben über impliziete NAs.Zum Beispiel Werte wie 99, 98 oder -1, -2, die häufig zur Codierung bestimmter fehlender Werte genutzt werden. Diese für die meisten Analysen expliziert in NAs umgewadelt werden. Nachdem wir dies getan haben, können wir ihr Auftreten im Datensatz inspizieren. 
+
+```{r}
+miss_var_summary(BKA)
+
+gg_miss_var(BKA)
+
+vis_miss(BKA)
+```
+
+
+## Haben wir Outlier im Datensatz?
+
+Outlier sind Beobachtungen, die ungewöhnlich sind; Datenpunkte, die nicht in das Muster zu passen scheinen. Manchmal handelt es sich bei Outlier um Fehler bei der Dateneingabe; manchmal deuten Outlier auf wichtige neue wissenschaftliche Erkenntnisse hin.\
+\
+Als Beispiel betrachten wir die Aufklärungsquote einzelner Straftatsbestände je Stadt/Landkreis.
+
+```{r}
+BKA %>% 
+  filter(Straftat != "Straftaten insgesamt") %>% 
+  ggplot() + 
+    geom_histogram(mapping = aes(Aufklaerungsquote), binwidth = 0.5)
+```
+
+Bei einer großen Datenmenge sind Outlier in einem Histogramm manchmal schwer zu erkennen. Der einzige Hinweis auf Outlier ist die ungewöhnlich hohe Grenze der x-Achse. Damit die Outlier leicht zu erkennen sind, können wir mit coord_cartesian() auf kleine Werte der y-Achse zoomen.
+
+```{r}
+BKA %>% 
+  filter(Straftat != "Straftaten insgesamt") %>% 
+  ggplot() + 
+    geom_histogram(mapping = aes(Aufklaerungsquote), binwidth = 0.5) +
+    coord_cartesian(ylim = c(0, 50))
+```
+
+
+## Weitere Abschnitte?
+
+
+
+## Aufgabe Block 2
+
+Recodet die Variable "Stadt_Landkreis" als factor und stellt die durchschnittliche Anzahl an Straftaten pro Stadtkreis (Kreisart == "LK") grafisch dar. 
+Fortgeschritten: Sortiert die Stadtkreise in eurer Darstellung nach der jeweiligen durchschnittliche Anzahl an Straftaten.
+
+```{r}
+BKA$Stadt_Landkreis <- BKA$Stadt_Landkreis %>% factor()
+BKA %>% glimpse()
+
+BKA %>%
+  filter(Straftat == "Straftaten insgesamt", Kreisart == "SK") %>% 
+  ggplot(aes(erfasste_Faelle_Anzahl, Stadt_Landkreis)) + 
+    geom_col()
+
+# oder 
+
+BKA %>%
+  filter(Straftat == "Straftaten insgesamt", Kreisart == "SK") %>% 
+  mutate(Stadt_Landkreis = 
+           fct_reorder(Stadt_Landkreis, erfasste_Faelle_Anzahl)) %>%
+  ggplot(aes(erfasste_Faelle_Anzahl, Stadt_Landkreis)) + 
+    geom_col()
+
+```
+
+Überprüft durch grafische Darstellung, ob es bei der Variable "Aufklaerung_Anzahl" (die Aufklärungsanzahl einzelner Straftatsbestände je Stadt/Landkreis) potenzielle Outlier gibt.
+
+```{r}
+BKA %>% 
+  filter(Straftat != "Straftaten insgesamt") %>% 
+  ggplot() + 
+    geom_histogram(mapping = aes(Aufklaerung_Anzahl), binwidth = 100)
+
+BKA %>% 
+  filter(Straftat != "Straftaten insgesamt") %>% 
+  ggplot() + 
+    geom_histogram(mapping = aes(Aufklaerung_Anzahl), binwidth = 100) +
+    coord_cartesian(ylim = c(0, 50))
+```
+
+
+
+# Block 3: Manipulation
+
+In diesem Abschnitt verwenden wir hauptächlich das **dplyr** package, welches ebenfalls ein Core-Bestandteil des tidyverse ist.
+
+
+## dplyr Grundlagen
+
+Im Folgenden seht ihr die fünf wohl wichtigsten **dplyr**-Funktionen, mit denen ihr die meisten Datenmanipulationsprobleme lösen könnt. Einige hiervon haben wir vorher schon genutzt.
+```{r}
+```
+* `filter()`: Hiermit könnt ihr Observations nach ihren Werten ausfählen/filtern
+* `arrange()`: Ermöglicht es die Rows/Zeilen neue zu ordenen
+* `select()`: Lässt euch variablen nach ihren Namen auswählen
+* `mutate()`: Macht es möglich neue Variablen aus Funktionen bestehender Variablen zu erstellen
+* `summarise()`: Hierdurch lassen sich viele Werte zu einem einzigen Wert zusammenfassen
+```{r}
+```
+Diese können alle in Verbindung mit `group_by()` verwendet werden, wodurch sich der Anwendungsbereich jeder Funktion von der Bearbeitung des gesamten Datensatzes auf die Bearbeitung nach Gruppen ändert
+
+
+### Filter rows mit `filter()`
+
+```{r}
+filter(BKA, Straftat == "Straftaten insgesamt", erfasste_Faelle_Anzahl > 8000)
+```
+
+
+### Arrange rows mit `arrange()`
+
+```{r}
+arrange(BKA, desc(Schusswaffe_gedroht))
+```
+
+
+### Select columns mit `select()`
+
+```{r}
+select(BKA, Straftat, Stadt_Landkreis, Kreisart, erfasste_Faelle_Anzahl)
+```
+
+
+### Add new variables mit `mutate()`
+
+```{r}
+mutate(BKA, 
+       TV_anteil_maennlich = (TV_maennlich / TV_insgesamt)*100,
+       TV_anteil_weiblich = (TV_weiblich / TV_insgesamt)*100, 
+       TV_anteil_insgesamt = TV_anteil_maennlich + TV_anteil_weiblich)
+
+mutate(BKA, 
+       Aufklaerungsquote = Aufklaerungsquote / 100)
+
+```
+
+
+### Grouped summaries mit `summarise()`
+
+```{r}
+BKA %>% 
+  group_by(Kreisart) %>% 
+  summarise(mean_geschossen = mean(Schusswaffe_geschossen, na.rm = TRUE))
+```
+
+
+## Aufgabe Block 3
+
+***Aufgabe 1:*** Filtert den Datensatz nach Straßenkriminalität und reduziert ihn auf die Variablen Straftat, Stadt_Landkreis, Kreisart, erfasste_Faelle_Anzahl und Aufklaerung_Anzahl. Sortiert den Datensatz absteigend nach Anzahl der erfassten Straftaten.
+
+```{r}
+BKA %>% 
+  filter(Straftat == "Straßenkriminalität") %>% 
+  select(Straftat, Stadt_Landkreis, Kreisart, erfasste_Faelle_Anzahl,
+         Aufklaerung_Anzahl) %>% 
+  arrange(desc(erfasste_Faelle_Anzahl))
+  
+```
+
+***Aufgabe 2:*** Filtert den Datensatz nach Kreisfreien Städten und Handtaschenraub. Gruppiert den Datensatz im Anschluss nach den Kreisfreien Städten und fasst die gesamte Anzahl der erfassten Straftaten pro Kreisfreie Städt in einer neuen Variable zusammen. Sortiert den Datensatz aufsteigend nach der Anzahl der erfassten Straftaten je Kreisfreie Städtr.
+
+```{r}
+BKA %>% 
+  filter(Straftat == "Handtaschenraub", Kreisart == "KfS") %>% 
+  group_by(Stadt_Landkreis) %>% 
+  summarise(sum_straftat = sum(erfasste_Faelle_Anzahl, na.rm = TRUE)) %>% 
+  arrange(sum_straftat)
+```
+
+
+
+
