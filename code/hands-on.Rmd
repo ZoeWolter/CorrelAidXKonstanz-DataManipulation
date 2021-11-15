@@ -1,0 +1,206 @@
+---
+title: 'Hands-On Session: Datenbereinigung mit R'
+author: "Zoé Wolter"
+date: "15 11 2021"
+output: html_document
+---
+
+## Packages laden
+Im ersten Schritt solltet Ihr immer alle Packages laden, die Ihr für Euren Code benötigt. Am Übersichtlichsten ist es meistens, wenn Ihr ein separates R-Skript anlegt, um die Packages zu installieren bzw. zu laden, in diesem Fall könnt Ihr das einfach direkt hier im Rmd machen:
+
+```{r}
+library(tidyverse)
+```
+
+## Die Daten
+
+### Daten einlesen 
+Für diese Hands-On Session werdet Ihr Euch Daten der Stadt Konstanz zur Fahrradzählung im Stadtgebiet am Herosé-Park im Jahr 2020 anschauen. Ladet dafür die Daten, welche Ihr auf folgender Website findet: https://offenedaten-konstanz.de/dataset/dauerz-hlstellen-radverkehr/resource/c7da262a-7f4e-41a4-9a57-1d41222d77a4#{}. Hint: Ihr könnt Euch die Daten entweder downloaden und dann einlesen oder die Daten einfach direkt über die URL zum .csv-Datensatz einlesen. Egal wie, achtet auf das Zeichen zur Trennung von Spalten!
+
+```{r}
+readr::read_delim('https://offenedaten-konstanz.de/sites/default/files/Z%C3%A4hlstelle_Heros%C3%A9_2020_Wetter_st%C3%BCndlich.csv', delim = ";", escape_double = FALSE, trim_ws = TRUE) -> bikes
+```
+
+### Ein erster Überblick 
+
+Wenn Ihr die Daten eingelesen habt, solltet Ihr Euch zuerst einen Überblick über die Variablen, ihren Typ und den Umfang des Datensatzes verschaffen.
+
+Variablen: 
+
+- Zeit: Datum (DD.MM.JJJJ)
+- Uhrzeit (HH:MM)
+- Fahrradbruecke: Anzahl RadverkehrsteilnehmerInnen gesamt (Zahl)
+- Fahrradbruecke stadteinwaerts: Anzahl RadverkehrsteilnehmerInnen stadteinwärts (Zahl) (linksrheinisches Gebiet)
+- Fahrradbruecke stadtauswaerts: Anzahl RadverkehrsteilnehmerInnen stadtauswärts (Zahl)
+- Symbol Wetter: Kategorisierung Wetter 
+- Temperatur: Gemessene Temperatur zum gemessenen Zeitpunkt in Grad Celsius 
+- Gefühlte Temperatur: Wahrgenommene Umgebungstemperatur, nach dem Hitzindex gemessene gefühlte Temperatur zum gemessenen Zeitpunkt in Grad Celsius   
+- Regen (mm): Niederschlag zum Zeitpunkt in Millimeter 
+
+```{r}
+# Wie viele Variablen sind im Datensatz?
+bikes %>%
+  ncol()
+
+# Wie sind die oben gelisteten Variablen benannt?
+bikes %>%
+  names()
+
+# Wie viele Beobachtungen bzw. sind im Datensatz?
+bikes %>%
+  nrow()
+
+# Lasst Euch die ersten fünf Zeilen des Datensatzes anzeigen!
+bikes %>% 
+  head()
+
+# Welchen Datentyp haben die Variablen aktuell? Ist dieser sinnvoll?
+bikes %>%
+  summary()
+
+bikes %>%
+  lapply(class)
+```
+
+### Datenbereinigung
+
+Nachdem Ihr mit dem Datensatz nun etwas vertrauter seid, könnt Ihr Euch nun an die eigentliche Arbeit, die Datenbereinigung machen. Dabei schaut Ihr Euch nebenbei die `dplyr`-Verben noch einmal genauer an.
+
+#### Die Funktion `dplyr::select`
+Wählt zunächst folgende Variablen aus und benennt sie entsprechend um:
+
+- Zeit = datetime
+- FahrradbrueckeFahrradbruecke stadteinwärts Fahrräder = bikes_into_town
+- FahrradbrueckeFahrradbruecke stadtauswärts Fahrräder = bikes_out_of_town
+- Symbol Wetter = weather
+- Temperatur (°C) = temperature
+- Regen (mm) = rain
+
+```{r}
+bikes %>%
+  dplyr::select(
+    datetime = 'Zeit',
+    bikes_into_town = 'FahrradbrueckeFahrradbruecke stadteinwärts Fahrräder',
+    bikes_out_of_town = 'FahrradbrueckeFahrradbruecke stadtauswärts Fahrräder',
+    weather = 'Symbol Wetter',
+    temperature = 'Temperatur (°C)',
+    rain = 'Regen (mm)'
+  ) -> bikes
+```
+
+Nachdem Ihr nun nur die für Euch relevanten Variablen noch im Datensatz habt, weist Ihnen den angegebenen Datentyp zu. Hint: Macht Euch nicht zu viel Arbeit und schaut, welche Variablen bereits den richtigen Datentyp haben!
+
+- datetime = datetime (Hint: Googelt mal das R-Package `lubridate`!)
+- bikes_into_town = numeric
+- bikes_out_of_town = numeric
+- weather = factor
+- temperature = numeric
+- rain = numeric
+
+```{r}
+# Überprüfe Variablentyp
+bikes %>%
+  lapply(class)
+
+# datetime
+bikes$datetime %>%
+  lubridate::dmy_hm() -> bikes$datetime
+
+# weather
+bikes$weather %>%
+  as.factor() -> bikes$weather
+bikes$weather %>%
+  summary()
+```
+
+
+#### Die Funktion `dplyr::arrange`
+
+Sortiert den Datensatz nach der Variable `temperature` absteigend!
+
+```{r}
+# Ihr nehmt Euren Datensatz...
+bikes %>%
+  # ...und sortiert die Werte absteigend!
+  dplyr::arrange(desc(temperature))
+```
+
+
+#### Die Funktion `dplyr::filter`
+Erstellt nun die beiden Datensätze `bikes_sunny` und `bikes_rainy`:
+
+`bikes_sunny` für folgendes Wetter:
+- Sonnig
+`bikes_rainy` für folgendes Wetter:
+- Leichter Regenfall
+- Leichter Regenschauer
+- Mäßiger bis starker Regenschauer
+- Mäßiger Regenfall
+- Nieselregen 
+- Sintflutartiger Regenfall
+- Starker Regenfall
+- Stellenweiser leichter Regenfall
+- Stellenweiser Nieselregen
+- Stellenweiser Regenfall
+- Teilweise mäßiger Regenfall
+- Teilweise starker Regenfall
+
+```{r}
+# Datensatz bikes_sunny
+bikes %>%
+  dplyr::filter(
+    .$weather == 'Sonnig'
+  ) -> bikes_sunny
+
+# Datensatz bikes_rainy
+bikes %>%
+  dplyr::filter(
+    .$weather %in% c(
+      'Leichter Regenfall',
+      'Leichter Regenschauer',
+      'Mäßiger bis starker Regenschauer',
+      'Mäßiger Regenfall',
+      'Nieselregen',
+      'Sintflutartiger Regenfall',
+      'Starker Regenfall',
+      'Stellenweiser leichter Regenfall',
+      'Stellenweiser Nieselregen',
+      'Stellenweiser Regenfall',
+      'Teilweise mäßiger Regenfall',
+      'Teilweise starker Regenfall'
+    )
+  ) -> bikes_rainy
+```
+
+#### Die Funktion `dplyr::mutate`
+```{r}
+
+```
+
+
+#### Die Funktionen `dplyr::group_by` und `dplyr::summarize`
+```{r}
+
+```
+
+
+#### Umgang mit NA's
+```{r}
+
+```
+
+
+#### Pivoting
+```{r}
+
+```
+
+
+### Finale Visualisierung
+
+And finally... Wenn Ihr die Datenbereinigung oben so durchgeführt habt, wie es beschrieben war, dann solltet Ihr folgenden Code nun ausführen können und eine schöne abschließende Visualisierung erhalten - habt Ihr richtig gut gemacht!
+
+```{r}
+
+```
+
