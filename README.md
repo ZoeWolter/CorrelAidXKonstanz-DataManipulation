@@ -1,3 +1,5 @@
+![CorrelAid X Konstanz Header](https://github.com/ZoeWolter/CorrelAidXKonstanz-DataManipulation/blob/main/header.png?raw=true)
+
 # CorrelAidXKonstanz - Datenbereinigung mit R
 
 Herzlich Willkommen zu unserem Workshop zur **Datenbereinigung mit R**!
@@ -17,5 +19,3 @@ Tag 2:
 - top 1
 - top 2
 - top 3
-
-![CorrelAid X Konstanz Header](https://github.com/ZoeWolter/CorrelAidXKonstanz-DataManipulation/blob/main/header.png?raw=true)
