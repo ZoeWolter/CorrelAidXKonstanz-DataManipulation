@@ -9,7 +9,7 @@ output: html_document
 Im ersten Schritt solltet Ihr immer alle Packages laden, die Ihr für Euren Code benötigt. Am Übersichtlichsten ist es meistens, wenn Ihr ein separates R-Skript anlegt, um die Packages zu installieren bzw. zu laden, in diesem Fall könnt Ihr das einfach direkt hier im Rmd machen:
 
 ```{r}
-
+library(tidyverse)
 ```
 
 ## Die Daten
@@ -18,7 +18,7 @@ Im ersten Schritt solltet Ihr immer alle Packages laden, die Ihr für Euren Code
 Für diese Hands-On Session werdet Ihr Euch Daten der Stadt Konstanz zur Fahrradzählung im Stadtgebiet am Herosé-Park im Jahr 2020 anschauen. Ladet dafür die Daten, welche Ihr auf folgender Website findet: https://offenedaten-konstanz.de/dataset/dauerz-hlstellen-radverkehr/resource/c7da262a-7f4e-41a4-9a57-1d41222d77a4#{}. Hint: Ihr könnt Euch die Daten entweder downloaden und dann einlesen oder die Daten einfach direkt über die URL zum .csv-Datensatz einlesen. Egal wie, achtet auf das Zeichen zur Trennung von Spalten!
 
 ```{r}
-
+readr::read_delim('https://offenedaten-konstanz.de/sites/default/files/Z%C3%A4hlstelle_Heros%C3%A9_2020_Wetter_st%C3%BCndlich.csv', delim = ";", escape_double = FALSE, trim_ws = TRUE) -> bikes
 ```
 
 ### Ein erster Überblick 
@@ -39,20 +39,27 @@ Variablen:
 
 ```{r}
 # Wie viele Variablen sind im Datensatz?
-
+bikes %>%
+  ncol()
 
 # Wie sind die oben gelisteten Variablen benannt?
-
+bikes %>%
+  names()
 
 # Wie viele Beobachtungen bzw. sind im Datensatz?
-
+bikes %>%
+  nrow()
 
 # Lasst Euch die ersten fünf Zeilen des Datensatzes anzeigen!
-
+bikes %>% 
+  head()
 
 # Welchen Datentyp haben die Variablen aktuell? Ist dieser sinnvoll?
+bikes %>%
+  summary()
 
-
+bikes %>%
+  lapply(class)
 ```
 
 ## Datenbereinigung
@@ -70,7 +77,15 @@ Wählt zunächst folgende Variablen aus und benennt sie entsprechend um:
 - Regen (mm) = rain
 
 ```{r}
-
+bikes %>%
+  dplyr::select(
+    datetime = 'Zeit',
+    bikes_into_town = 'FahrradbrueckeFahrradbruecke stadteinwärts Fahrräder',
+    bikes_out_of_town = 'FahrradbrueckeFahrradbruecke stadtauswärts Fahrräder',
+    weather = 'Symbol Wetter',
+    temperature = 'Temperatur (°C)',
+    rain = 'Regen (mm)'
+  ) -> bikes
 ```
 
 Nachdem Ihr nun nur die für Euch relevanten Variablen noch im Datensatz habt, weist Ihnen den angegebenen Datentyp zu. Hint: Macht Euch nicht zu viel Arbeit und schaut, welche Variablen bereits den richtigen Datentyp haben!
@@ -84,13 +99,18 @@ Nachdem Ihr nun nur die für Euch relevanten Variablen noch im Datensatz habt, w
 
 ```{r}
 # Überprüfe Variablentyp
-
+bikes %>%
+  lapply(class)
 
 # datetime
-
+bikes$datetime %>%
+  lubridate::dmy_hm() -> bikes$datetime
 
 # weather
-
+bikes$weather %>%
+  as.factor() -> bikes$weather
+bikes$weather %>%
+  summary()
 ```
 
 
@@ -100,18 +120,18 @@ Sortiert den Datensatz nach der Variable `temperature` absteigend! An welchen Ta
 
 ```{r}
 # Ihr nehmt Euren Datensatz...
-
+bikes %>%
   # ...und sortiert die Werte absteigend!
-  
+  dplyr::arrange(desc(temperature))
 ```
 
 Sortiert den Datensatz nun nach der Variable `bikes_into_town` absteigend!
 
 ```{r}
 # Ihr nehmt Euren Datensatz...
-
+bikes %>%
   # ...und sortiert die Werte absteigend!
-  
+  dplyr::arrange(desc(bikes_into_town))
 ```
 
 ### Die Funktion `dplyr::filter`
@@ -135,33 +155,40 @@ Erstellt nun die beiden Datensätze `bikes_sunny` und `bikes_rainy`:
 
 ```{r}
 # Datensatz bikes_sunny
-
-
-
+bikes %>%
+  dplyr::filter(
+    .$weather == 'Sonnig'
+  ) -> bikes_sunny
 
 # Datensatz bikes_rainy
-
-
-
-
-
-
-
-
-
-
-
-
-
+bikes %>%
+  dplyr::filter(
+    .$weather %in% c(
+      'Leichter Regenfall',
+      'Leichter Regenschauer',
+      'Mäßiger bis starker Regenschauer',
+      'Mäßiger Regenfall',
+      'Nieselregen',
+      'Sintflutartiger Regenfall',
+      'Starker Regenfall',
+      'Stellenweiser leichter Regenfall',
+      'Stellenweiser Nieselregen',
+      'Stellenweiser Regenfall',
+      'Teilweise mäßiger Regenfall',
+      'Teilweise starker Regenfall'
+    )
+  ) -> bikes_rainy
 ```
 
 ### Die Funktion `dplyr::mutate`
 Bisher habt Ihr eine Variable für den Tag und die Uhrzeit zusammen im Datensatz `bikes`. Erstellt aus der Variable `datetime` nun zwei unterschiedliche Variablen `day` und `time`:
 
 ```{r}
-
-
-
+bikes %>%
+  dplyr::mutate(
+    day = as.Date(datetime),
+    time = format(as.POSIXct(datetime), format = "%H:%M:%S")
+  ) -> bikes
 ```
 
 
@@ -176,19 +203,22 @@ Nutzt nun die Funktionen `group_by` und `summarize` aus dem `dplyr`-Package, um 
 Hint: Achtet dabei besonders auf den Umgang mit NA's!
 
 ```{r}
-
-
-
-
+bikes %>%
+  dplyr::group_by(day) %>%
+  dplyr::summarize(bikes_into_town = sum(bikes_into_town, na.rm = TRUE),
+                   bikes_out_of_town = sum(bikes_out_of_town, na.rm = TRUE),
+                   temperature = mean(temperature, na.rm = TRUE),
+                   rain = sum(rain, na.rm = TRUE)) -> bikes
 ```
 
 ### Pivoting
 Nun habt Ihr pro Tag eine Variable zu den Fahrradfahrern die Stadt und aus der Stadt. Die Daten sind also im wide-Format. Bringt diese nun ins long-Format, sodass Ihr nur noch eine Variable mit der Anzahl an Fahrrädern habt und in einer separaten Spalte die Information zur Richtung:
 
 ```{r}
-
-
-
+bikes %>%
+  tidyr::pivot_longer(cols = c(bikes_into_town, bikes_out_of_town),
+                      names_to = 'direction',
+                      values_to = 'bikes') -> bikes
 ```
 
 ## Finale Visualisierung
