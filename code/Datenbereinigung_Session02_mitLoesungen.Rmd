@@ -1,0 +1,86 @@
+---
+title: "Datenbereinigung mit R - Session 2"
+author: "Zoé Wolter, Liane Strauch und Jens Wiederspohn"
+date: "25 11 2021"
+output: html_document
+---
+
+
+# Welcome back!
+
+## Vorbereitung
+```{r}
+pacman::p_load(tidyverse, readxl)
+BKA_preprocessed <- read_excel("KR-F-01-T01-Kreise-Faelle-HZ_xls (1).xlsx", 
+    col_names = columns, skip = 9)
+```
+
+ATTRIBUTE-Aufgabe
+Speichert in den Attributes die genaue Bezeichnung für die Variablen: 
+Aufklärungsquote (prozentualer Anteil der aufgeklärten Fälle an den erfassten Fällen)
+TV_insgesamt (Anzahl der registrierten Tatverdächtigen insgesamt)
+nd_TV_insgesamt (Anzahl der registrierten nichtdeutschen Tatverdächtigen)
+
+Die Beschreibungen befinden sich ebenfalls in der Tabllenbeschreibung der Statistiken
+```{r}
+attributes(BKA_preprocessed$Aufklaerungsquote)$label <- "prozentualer Anteil der aufgeklärten Fälle an den erfassten Fällen"
+attributes(BKA_preprocessed$TV_insgesamt)$label <- "Anzahl der registrierten Tatverdächtigen insgesamt"
+attributes(BKA_preprocessed$nd_TV_Anzahl)$label <- "Anzahl der registrierten nichtdeutschen Tatverdächtigen"
+```
+
+
+
+# Block 5: Data Manipulation - Regex
+
+## Strings manipulieren (Umlaute)
+
+Wir erinneren uns an den CSV-Datensatz, der die Umlaute nicht richtig eingelesen hat. Die `gsub` Funktion sucht nach einer bestimmten Zeichenfolge und ersetzt sie mit einer anderen.
+```{r}
+unique(BKA_csv$Stadt_Landkreis)   # Umlaute werden cryptisch dargestellt
+# für folgende Umlaute sehen wir momentan folgende Varianten
+# ü = \xfc
+# ö = \xf6
+# ä = \xe4
+# ß = \xdf
+# Hier wird an jeder Stelle, an der eigentlich ein ü seien sollte, ein ue eingesetzt. 
+# fixed steht dafür, dass ihr nur genau nach dieser Zeichenkette sucht und keine Variation davon (mehr dazu gleich unter dem Titel "regex")
+# useBytes stellt sicher, dass die Zeichenketten Bytes für Bytes verglichen werden und nicht vorher in Buchstaben intepretiert werden.
+BKA_csv$Stadt_Landkreis <- gsub(pattern = "\xfc", replacement = "ue", x = BKA_csv$Stadt_Landkreis, fixed = T, useBytes = T)
+```
+
+
+## Regex
+
+Regex ist eine Abkürzung für den Ausdruck regular expression und beschreibt eine Typ von Zeichenkette. Anstelle wie vorher zu sagen, dass die Zeichenkette \\xfc durch ein ue ersetzt werden soll, können regex z.B. beschreiben, dass alle Zahlen aus einer Zeichenkette entfernt werden sollen. Es geht auch koplizierter, z.B. das alle Stellen die drei Zahlen gefolgt von drei Buchstaben enthalten entfernt werden sollen. 
+Zum Üben wurden der Gemeindeschlüssel und der Ortsname mit einem Unterstrich verbunden und in der Variable `Name_Schluessel` gespeichert. 
+Mit Regex können wir die Gemeindeschlüssel vom Ortsnamen trennen indem wir bestimmen, dass alle Zahlen zu Beginn der Zeichenkette bis zum Unterstrich entfernt werden sollen.
+```{r}
+# neue Variable erstellt, die wieder in ihre Einzelteile gebracht werden soll.
+BKA_csv$Name_Schluessel <- paste(BKA_preprocessed$Gemeindeschluessel, BKA_preprocessed$Stadt_Landkreis, sep = "_")
+# package
+library(rebus)
+# diese packages hilf bei der Definition der Zeichenkette, die identifiziert werden soll mit sprachlichen äquivalenten zu den Zeichen, die typischerweise bei regex erwartet werden.
+pattern_schluessel <- START %R% one_or_more(DIGIT) %R% "_"
+# mit gsub kann das Entfernen durchgeführt werden. Wichtig: Fixed = False muss angegeben werden, damit nicht nach der exakten Zeichenkette "^[0-9]*_" gesucht wird, sondern nach der Familie an Zeichenketten, die dieser Ausdruck repräsentiert.
+# Hier ein paar Lösungsvarianten:
+gsub("^[0-9]*_", "", BKA_csv$Name_Schluessel)
+gsub("^[[:digit:]]*_", "", BKA_csv$Name_Schluessel)
+gsub(pattern_schluessel, "", BKA_csv$Name_Schluessel)
+```
+
+
+## AUFGABE BLOCK 5
+
+Korrigiert die restlichen Umlaute, die falsch intepretiert wurden.
+
+Als Übung zum Thema regex entfernt ihr aus der Namen_Schuessel Variable, die Ortsnamen, sodass nur noch die Gemeindeschlüssel übrig bleiben.
+Hilfe für die regex Aufgabe: http://edrub.in/CheatSheets/cheatSheetStringr.pdf
+
+```{r}
+# gsub
+BKA_csv$Stadt_Landkreis <- gsub(pattern = "\xf6", replacement = "oe", x = BKA_csv$Stadt_Landkreis, fixed = T, useBytes = T)
+BKA_csv$Stadt_Landkreis <- gsub(pattern = "\xe4", replacement = "ae", x = BKA_csv$Stadt_Landkreis, fixed = T, useBytes = T)
+BKA_csv$Stadt_Landkreis <- gsub(pattern = "\xdf", replacement = "ss", x = BKA_csv$Stadt_Landkreis, fixed = T, useBytes = T)
+# regex
+gsub("[[:alpha:][:blank:][:punct:]]", "", BKA_csv$Name_Schluessel)
+```
