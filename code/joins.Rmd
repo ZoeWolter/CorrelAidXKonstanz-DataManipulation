@@ -1,0 +1,67 @@
+---
+title: "Data Manipulation and Preprocessing"
+author: "Zoé Wolter"
+date: "Nov 25, 2021"
+output: html_document
+---
+
+
+## Daten laden
+
+Zuerst laden wir einen weiteren Datensatz vom BKA. Diesen wollen wir später mit dem Datensatz, den ihr bereits bearbeitet habt, zusammenfügen.
+
+```{r}
+library(tidyverse)
+
+readr::read_delim("data/KR-F-02-T01-Kreise-Fallentw.csv", 
+                  delim = ";", 
+                  escape_double = FALSE, 
+                  #locale = locale(encoding = "ISO-8859-1"), 
+                  trim_ws = TRUE,
+                  skip = 1) -> bka_dev
+``` 
+
+## Daten bereinigen
+
+Auch diesen Datensatz müssen wir zuerst einmal bereinigen, bevor wir mit ihm arbeiten können:
+
+```{r}
+# Auswahl von relevanten Variablen
+bka_dev %>% 
+  dplyr::select(
+    Straftat = 'Straftat',
+    Gemeindeschluessel = 'Gemeindeschluessel',
+    Kreis = 'Stadt-/Landkreis',
+    Faelle_2019 = 'Faelle Jahr 2019',
+    Faelle_2018 = 'Faelle Jahr 2018'
+  ) -> bka_dev
+
+# nur die Zeilen zu Straftaten insgesamt 
+bka_dev %>%
+  dplyr::filter(
+    Straftat == 'Straftaten insgesamt'
+  ) %>%
+  dplyr::select(
+    -Straftat
+  ) -> bka_dev
+
+# überprüfe Datentypen
+bka_dev %>%
+  lapply(class)
+bka_dev$Gemeindeschluessel %>%
+  as.character() -> bka_dev$Gemeindeschluessel
+``` 
+
+## Daten zusammenfügen 
+
+Nun haben wir zwei Datensätze, die beide die Variable `Gemeindeschlüssel` beinhalten. Anhand von dieser Variable können wir nun die beiden Datensätze zusammenfügen. Dafür gibt es verschiedene Möglichkeiten: 
+
+- `inner_join`: nur die Gemeinden werden beibehalten, die **in beiden Datensätzen** enthalten sind
+- `full_join`: **alle Gemeinden** aus beiden Datensätzen sind enthalten
+- `left_join`/`right_join`: nur die **Gemeinden aus dem zuerst bzw. zuletzt genannten Datensatz** bleiben enthalten
+
+![](https://d33wubrfki0l68.cloudfront.net/aeab386461820b029b7e7606ccff1286f623bae1/ef0d4/diagrams/join-venn.png){#id .class width=80% height=100%}
+
+
+
+
