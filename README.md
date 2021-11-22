@@ -10,12 +10,30 @@ Herzlich Willkommen zu unserem Workshop zur **Datenbereinigung mit R**!
 - Öffnen des R-Projekts über die Datei *data-manipulation.Rproj*
 
 ## Workshop
-Tag 1:
-- top 1
-- top 2
-- top 3
 
-Tag 2:
-- top 1
-- top 2
-- top 3
+**Tag 1:**
+- Getting started: 
+  - Daten importieren
+  - Übersicht über den Datensatz verschaffen 
+  - Die Pipe
+  - Attributes
+- Datentypen und Outlier: 
+  - Vektoren und andere Datentypen
+  - NA's
+  - Outlier finden 
+- Datenmanipulation aka die `dplyr`-Verben:
+  - filter
+  - arrange
+  - select
+  - mutate
+  - summarize
+  - group_by
+
+**Tag 2:**
+- Datensätze zusammenfügen:
+  - Verschiedene Arten an Joins
+  - `dplyr`-Joins
+- String-Manipulation:
+  - Umgang mit Umlauten
+  - Regex
+- Hands-On Session
