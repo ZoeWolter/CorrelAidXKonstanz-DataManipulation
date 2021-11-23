@@ -332,7 +332,7 @@ attributes(BKA_preprocessed$Kreisart)
 ## Haben wir NA's im Datensatz?
 
 Um diese Frage zu beantworten und die Häufigkeit deren Auftretens zu bestimmen nutzen wir das **naniar** Package. Dies ist hilfreich für die Zusammenfassung und den Umgang mit NAs in R. Es versucht hierbei so konsistent wie möglich mit den Prinzipien des tidyverse zu sein. 
-Es ist immer wichtig sich das Codebook des Datensatzes genau anzuschauen. In diesem erhaltet ihr Angaben über impliziete NA's. Zum Beispiel Werte wie 99, 98 oder -1, -2, die häufig zur Codierung bestimmter fehlender Werte genutzt werden. Diese für die meisten Analysen expliziert in NAs umgewadelt werden. Nachdem wir dies getan haben, können wir ihr Auftreten im Datensatz inspizieren. 
+Es ist immer wichtig sich das Codebook des Datensatzes genau anzuschauen. In diesem erhaltet ihr Angaben über impliziete NA's. Zum Beispiel Werte wie 99, 98 oder -1, -2, die häufig zur Codierung bestimmter fehlender Werte genutzt werden. Diese werden für die meisten Analysen expliziert in NAs umgewandelt. Nachdem wir dies getan haben, können wir ihr Auftreten im Datensatz inspizieren. 
 
 ```{r}
 # Zur Veranschaulichung filtern wir den Datensatz auf Observationen zu den einzelnen Straftaten und erstellen drei neue Variablen mit NA's 
