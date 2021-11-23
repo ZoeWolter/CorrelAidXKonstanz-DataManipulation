@@ -233,6 +233,7 @@ BKA_preprocessed %>%
 
 ```{r}
 BKA_preprocessed %>% 
+  dplyr::filter(Straftat == "Straftaten insgesamt") %>% 
   # Gruppieren nach Kreisarten
   dplyr::group_by(Kreisart) %>% 
   # Berechnen des Mittelwerts für jede Gruppe - Achtung NA's!
