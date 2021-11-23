@@ -168,7 +168,7 @@ In diesem Abschnitt verwenden wir hauptächlich das **dplyr** package, welches e
 
 ## dplyr Grundlagen
 
-Im Folgenden seht Ihr die fünf wichtigsten **dplyr**-Funktionen, mit denen Ihr die meisten Datenmanipulationsprobleme lösen könnt. Einige hiervon haben wir vorher schon genutzt.
+Im Folgenden seht Ihr die fünf wichtigsten **dplyr**-Funktionen, mit denen Ihr die meisten Datenmanipulationsprobleme lösen könnt.
 
 - `filter()`: Hiermit könnt Ihr Observations nach ihren Werten auswählen/filtern
 - `arrange()`: Ermöglicht es die Rows/Zeilen neu zu ordnen
@@ -233,6 +233,7 @@ BKA_preprocessed %>%
 
 ```{r}
 BKA_preprocessed %>% 
+  dplyr::filter(Straftat == "Straftaten insgesamt") %>% 
   # Gruppieren nach Kreisarten
   dplyr::group_by(Kreisart) %>% 
   # Berechnen des Mittelwerts für jede Gruppe - Achtung NA's!
@@ -283,6 +284,7 @@ b) Filtert den Datensatz nach Kreisfreien Städten ("KfS") und Handtaschenraub. 
 
 ```
 
+
 # Block 3: Datentypen & Outlier
 
 Datensätze (*data frames* in R) können Variablen (= Spalten im Datensatz) mit verschiedenen Typen abbilden. Um die Variablen zu bearbeiten (manipulieren) ist es unabdingbar, deren *type* zu kennen. Mittelwert von einer Variable mit Namen zu berechnen ergibt nämlich nur semi-Sinn.
@@ -318,51 +320,46 @@ unique(BKA_preprocessed$Kreisart)
 attributes(BKA_preprocessed$Kreisart)
 ```
 
-Für die nächsten Schritte filtern und gruppieren wir zunächst den *BKA_preprocessed* Datensatz und berechnen die durchschnittliche Anzahl an Stafttaten pro Kreisart.
-
-```{r}
-gesamt_kreisart <- BKA_preprocessed %>%
-  dplyr::filter(Straftat == "Straftaten insgesamt") %>% 
-  dplyr::group_by(Kreisart) %>%
-  dplyr::summarise(
-    Mean_Straftaten = mean(erfasste_Faelle_Anzahl, na.rm = TRUE),
-    Sum_Straftaten = sum(erfasste_Faelle_Anzahl, na.rm = TRUE)
-  )
-
-gesamt_kreisart
-```
-
 ## Haben wir NA's im Datensatz?
 
-Um diese Frage zu beantworten und die Häufigkeit deren Auftretens zu bestimmen, nutzen wir das **naniar** Package. Dieses ist hilfreich für die Zusammenfassung und den Umgang mit NA's in R. Es versucht hierbei so konsistent wie möglich mit den Prinzipien des `tidyverse` zu sein. 
-Es ist immer wichtig, sich das Codebook des Datensatzes genau anzuschauen. In diesem erhaltet Ihr Angaben über implizite NA's. Zum Beispiel Werte wie 99, 98 oder -1, -2, die häufig zur Codierung bestimmter fehlender Werte genutzt werden. Diese müssen für die meisten Analysen explizit in NAs umgewandelt werden. Nachdem wir dies getan haben, können wir ihr Auftreten im Datensatz inspizieren. 
+Um diese Frage zu beantworten und die Häufigkeit deren Auftretens zu bestimmen, nutzen wir das **naniar** Package. Dies ist hilfreich für die Zusammenfassung und den Umgang mit NAs in R. Es versucht hierbei so konsistent wie möglich mit den Prinzipien des `tidyverse` zu sein. 
+Es ist immer wichtig sich das Codebook des Datensatzes genau anzuschauen. In diesem erhaltet Ihr Angaben über impliziete NA's. Zum Beispiel Werte wie 99, 98 oder -1, -2, die häufig zur Codierung bestimmter fehlender Werte genutzt werden. Diese werden für die meisten Analysen expliziert in NA's umgewandelt. Nachdem wir dies getan haben, können wir ihr Auftreten im Datensatz inspizieren. 
 
 ```{r}
-# Zur Veranschaulichung filtern wir den Datensatz auf Observationen zu den "Straftaten insgesamt" und erstellen zwei neue Variablen mit NA's 
-BKA_preprocessed_gesamt <- BKA_preprocessed %>%
-  dplyr::filter(Straftat == "Straftaten insgesamt") %>% 
-  dplyr::select(Straftat, 
-                Stadt_Landkreis, 
-                Kreisart, 
-                erfasste_Faelle_Anzahl) %>%
-  dplyr::mutate(erfasste_Faelle_neu = case_when(Kreisart != "SK" ~ erfasste_Faelle_Anzahl),
-                Kreisart_neu = as.character(Kreisart),
-                Kreisart_neu = replace(Kreisart_neu, 
-                                       erfasste_Faelle_Anzahl > 3000 &
-                                         erfasste_Faelle_Anzahl < 4000, 
-                                       "Keine Angabe"),
-                Kreisart_neu = replace(Kreisart_neu, 
-                                       erfasste_Faelle_Anzahl >= 4000 & 
-                                         erfasste_Faelle_Anzahl < 5000, 
-                                       "Unbekannt")) %>%
-  naniar::replace_with_na_at(.vars = c("erfasste_Faelle_neu"),
-                             condition = ~.x > 3000 & .x < 5000)
+# Zur Veranschaulichung filtern wir den Datensatz auf Observationen zu den einzelnen Straftaten und erstellen drei neue Variablen mit NA's 
+BKA_withNA <- BKA_preprocessed %>%
+  dplyr::filter(Straftat != "Straftaten insgesamt") %>% 
+  dplyr::select(Straftat, Stadt_Landkreis, Kreisart, erfasste_Faelle_Anzahl,
+         Aufklaerungsquote, Aufklaerung_Anzahl) %>%
+  dplyr::mutate(erfasste_Faelle_Anzahl = case_when(Kreisart != "SK" ~
+                                           erfasste_Faelle_Anzahl),
+         Kreisart = as.character(Kreisart),
+         Kreisart = replace(Kreisart,
+                            erfasste_Faelle_Anzahl > 3000 &
+                              erfasste_Faelle_Anzahl < 4000, 
+                            "Keine Angabe"),
+         Kreisart = replace(Kreisart, 
+                            erfasste_Faelle_Anzahl >= 4000 & 
+                              erfasste_Faelle_Anzahl < 5000,
+                            "Unbekannt"),
+         Stadt_Landkreis = replace(Stadt_Landkreis, 
+                                   (erfasste_Faelle_Anzahl > 3000 &
+                                     erfasste_Faelle_Anzahl < 4000) | 
+                                     Stadt_Landkreis == "Baden-Baden",
+                                   "Keine Angabe"),
+         Stadt_Landkreis = replace(Stadt_Landkreis, 
+                                   (erfasste_Faelle_Anzahl >= 4000 & 
+                                     erfasste_Faelle_Anzahl < 5000) | 
+                                     Stadt_Landkreis == "Ulm", 
+                                   "Nicht erfasst")) %>%
+  naniar::replace_with_na_at(.vars = c("erfasste_Faelle_Anzahl"),
+                     condition = ~.x > 3000 & .x < 5000)
 ```
 
 Hierdurch können wir uns einen Überblick über die Möglichkeiten des naniar packages verschaffen
 ```{r}
 library(naniar)
-vignette("naniar")           # Funktioniert nicht
+vignette("naniar") # Funktioniert nicht
 vignette(package = "naniar") # Suche nach allen Vignettes zum naniar package
 
 vignette("naniar-visualisation")
@@ -370,93 +367,74 @@ vignette("naniar-visualisation")
 
 Tibble mit der absoluten und prozentualen Anzahl an NA's pro Variable
 ```{r}
-BKA_preprocessed_gesamt %>%
+BKA_withNA %>% 
   naniar::miss_var_summary()
 ```
 
-Überprüfen der Variable "Kreisart_neu" mit `summary()`
+Überprüfen der Variable "Kreisart" mit `summary()`
 ```{r}
-table(BKA_preprocessed_gesamt$Kreisart_neu)
+table(BKA_withNA$Kreisart)
 ```
 
-Um die NA's explizit zu codieren, können wir zum Beispiel `naniar::replace_with_na()` nutzen oder "Kreisart_neu" in einen *factor* umwandeln und die *factor levels* hierbei angeben.
+Um die NA's explizit zu codieren können wir zum Beispiel `replace_with_na()` nutzen oder "Kreisart" in einen *factor* umwandeln und die *factor levels* hierbei angeben.
 
 ```{r}
-BKA_preprocessed_gesamt <- BKA_preprocessed_gesamt %>% 
-  naniar::replace_with_na(replace = list(Kreisart_neu = c("Keine Angabe", "Unbekannt")))
+BKA_withNA <- BKA_withNA %>% 
+  naniar::replace_with_na(replace = list(Kreisart = 
+                                           c("Keine Angabe", "Unbekannt")))
 
-table(BKA_preprocessed_gesamt$Kreisart_neu)
-miss_var_summary(BKA_preprocessed_gesamt)
+table(BKA_withNA$Kreisart)
+BKA_withNA %>% 
+  miss_var_summary()
 ```
 
 ```{r}
 # Plot mit der Anzahl an NA's pro Variable
-naniar::gg_miss_var(BKA_preprocessed_gesamt)
+naniar::gg_miss_var(BKA_withNA)
 
 # Visualisierung der Position der NA's im Datensatz
-naniar::vis_miss(BKA_preprocessed_gesamt)
+naniar::vis_miss(BKA_withNA)
 
 # Visualisierung der bei selben Observationen auftretenden NA's
-naniar::gg_miss_upset(BKA_preprocessed_gesamt)
-
-# Plots der NA's in Abhängigkeit anderer Variablen
-naniar::gg_miss_var(BKA_preprocessed_gesamt, facet = Kreisart)
+naniar::gg_miss_upset(BKA_withNA)
 ```
 
 
 ## Haben wir Outlier im Datensatz?
 
-Outlier sind Beobachtungen, die ungewöhnlich sind; Datenpunkte, die nicht in das Muster zu passen scheinen. Manchmal handelt es sich bei Outliern um Fehler bei der Dateneingabe; manchmal deuten Outlier auf wichtige neue wissenschaftliche Erkenntnisse hin.
+Outlier sind Beobachtungen, die ungewöhnlich sind; Datenpunkte, die nicht in das Muster zu passen scheinen. Manchmal handelt es sich bei Outlier um Fehler bei der Dateneingabe; manchmal deuten Outlier auf wichtige neue wissenschaftliche Erkenntnisse hin.
 
 Als Beispiel betrachten wir die Aufklärungsquote einzelner Straftatsbestände.
 
-```{r}
-BKA_preprocessed_einzeln <- BKA_preprocessed %>% 
-  dplyr::filter(Straftat != "Straftaten insgesamt")
-
-BKA_preprocessed_einzeln_SK <- BKA_preprocessed %>% 
-  dplyr::filter(Straftat != "Straftaten insgesamt",
-                Kreisart == "SK") %>% 
-  dplyr::mutate(Stadt_Landkreis = replace(Stadt_Landkreis, 
-                                          erfasste_Faelle_Anzahl > 3000 &
-                                            erfasste_Faelle_Anzahl < 4000, 
-                                          "Keine Angabe"),
-                Stadt_Landkreis = replace(Stadt_Landkreis, 
-                                          erfasste_Faelle_Anzahl >= 4000 & 
-                                            erfasste_Faelle_Anzahl < 5000, 
-                                          "Nicht erfasst"))
-```
-
 Dazu betrachten wir zunächst die summary der Variable
 ```{r}
-summary(BKA_preprocessed_einzeln$Aufklaerungsquote)
+summary(BKA_withNA$Aufklaerungsquote)
 ```
 
 Auffällig ist der ungewöhnlich hohe maximale Wert von 300, da die Aufklärungsqoute zwischen 0 - 100% liegen sollte.
 
 Wir betracheten deshalb auch noch ein Histogram der Variable:
 ```{r}
-BKA_preprocessed_einzeln %>% 
+BKA_withNA %>% 
   ggplot2::ggplot() +
-    ggplot2::geom_histogram(mapping = aes(Aufklaerungsquote), binwidth = 0.5)
+  ggplot2::geom_histogram(mapping = aes(Aufklaerungsquote), binwidth = 0.5)
 ```
 
-Bei einer großen Datenmenge sind Outlier in einem Histogramm manchmal schwer zu erkennen. Der einzige Hinweis auf Outlier ist die ungewöhnlich hohe Grenze der x-Achse. Damit die Outlier leicht zu erkennen sind, können wir mit `coord_cartesian()` auf kleine Werte der y-Achse zoomen.
-
+Bei einer großen Datenmenge sind Outlier in einem Histogramm manchmal schwer zu erkennen. Der einzige Hinweis auf Outlier ist die ungewöhnlich hohe Grenze der x-Achse. Damit die Outlier leicht zu erkennen sind, können wir mit coord_cartesian() auf kleine Werte der y-Achse zoomen.
 ```{r}
-BKA_preprocessed_einzeln %>% 
+BKA_withNA %>% 
   ggplot2::ggplot() + 
     ggplot2::geom_histogram(mapping = aes(Aufklaerungsquote), binwidth = 0.5) +
     ggplot2::coord_cartesian(ylim = c(0, 50))
 ```
 
-Bevor wir unserer Analyse fortsetzen können, müssen wir das beiligende Codebook nochmals genau anschauen und in Erfahrung bringen, wie es zu diesen Outliern kommen kann.
+Bevor wir mit unserer Analyse fortsetzen können, müssen wir das beiligende Codebook nochmals genau anschauen und in Erfahrung bringen, wie es zu diesen Outliern kommen kann.
 
 
 **AUFGABE**:
 
-a) Nutzt den "BKA_preprocessed_einzeln_SK" Datensatz und überprüft, ob es bei der Variable implizite NA's gibt. Falls dies der Fall ist, nutzt `replace_with_na()` um diese explizit als NA's zu klassifizieren.
-
+a) Nutzt den "BKA_withNA" Datensatz und überprüft, ob es bei der Variable "Stadt_Landkreis" implizite NA's gibt. Nutzt `replace_with_na()` um diese explizit als NA's zu klassifizieren.
+*Tipp*: Um alle impliziten NA's zu finden, genügt es, die Stadtkreise ("SK") zu betrachten.
 ```{r}
 
 
@@ -468,8 +446,7 @@ a) Nutzt den "BKA_preprocessed_einzeln_SK" Datensatz und überprüft, ob es bei 
 
 ```
 
-b) Recodet die Variable "Stadt_Landkreis" als factor.
-
+b) Recodet die Variable "Stadt_Landkreis" als *factor*.
 ```{r}
 
 
@@ -477,7 +454,6 @@ b) Recodet die Variable "Stadt_Landkreis" als factor.
 
 c) Überprüft mit der `summary()`function, ob es bei der Variable "Aufklaerung_Anzahl" (die Aufklärungsanzahl einzelner Straftatsbestände je Stadtkreis) potenzielle Outlier gibt. 
 Fortgeschritten: Nutzt ein Histogram der Variable "Aufklaerung_Anzahl", um potenzielle Outlier grafisch darzustellen.
-
 ```{r}
 
 
@@ -490,4 +466,3 @@ Fortgeschritten: Nutzt ein Histogram der Variable "Aufklaerung_Anzahl", um poten
 
 
 ```
-
