@@ -1,0 +1,484 @@
+---
+title: "Datenbereinigung mit R - Session 1"
+author: "Zoé Wolter, Liane Strauch und Jens Wiederspohn"
+date: "23 11 2021"
+output: html_document
+---
+
+# Block 1: Getting started
+
+## Packages laden
+```{r}
+pacman::p_load(tidyverse, readxl, naniar, here, janitor)
+```
+
+
+## Daten importieren
+
+Wer smart importiert kann später bei der Datenbereinigung Zeit sparen.
+Zum Importieren von Excel-Datensätzen nutzen wir in diesem Kurs das `readxl` package.
+
+```{r}
+# Package
+library(readxl)
+``` 
+
+Wenn die Datei im gleichen Ordner/Verzeichnis/Directory liegt wie das Projekt, kann die Datei mit dem einzigen Argument des Dateinames importiert werden. Allerdings ist das Format der Datei und die Variablennamen oft nicht optimal. Unsere Ordnerstruktur ist jedoch etwas anders (und sinnvoller) aufgebaut. Wir haben jeweils separate Ordner für Code und Daten. Auf dem top level liegt außerdem unser R-Projekt. Diese Struktur empfehlen wir Euch auch für zukünftige Projekte. Nun müssen wir jedoch R genau sagen, wo es unsere Daten zu finden hat, um sie einzulesen. Standardmäßig würde R
+derzeit im selben Ordner nachsehen, wo auch dieses Skript liegt. Dort liegen aber keine Daten. Zur Hilfe eilt uns das `here` package. 
+Die Funktion `here::here()` spielt uns den Pfad zum Ordner zurück, in dem unser Projektfile liegt. Von diesem Ordner ausgehend können wir dann einen Pfad zum Datensatz bilden.
+
+```{r}
+here::here()
+BKA_first <- read_excel(path = here::here("data", "KR-F-01-T01-Kreise-Faelle-HZ_xls (1).xlsx"))
+
+View(BKA_first)
+mean(BKA_first$`KfS = kreisfreie Stadt`) # die Spalte beinhaltet die absolute Anzahl der erfassten Fälle für die entsprechende geographische Einheit
+
+class(BKA_first$`KfS = kreisfreie Stadt`)
+mean(as.numeric((BKA_first$`KfS = kreisfreie Stadt`)))
+mean(as.numeric((BKA_first$`KfS = kreisfreie Stadt`)), na.rm = TRUE)
+```
+
+Mithilfe der `args` Funktion können alle möglichen Argumente und - falls vorhanden - deren Standardwerte ermittelt werden. Das Fragezeichen öffnet die Help-Seite zu der entsprechenden Funktion. 
+
+Um dem Problem der nicht aussagekräftigen Variablennamen entgegenzuwirken, erstellen wir einen Vektor mit neuen Variablennamen. Die Namen müssen die gleiche Reihenfolge wie die Spalten im Datensatz haben. 
+Zusätzlich verwenden wir das Argument `skip = 9` um die ersten 9 Zeilen nicht zu übernehmen. 
+Diesen Datensatz speichern wir unter den Namen `BKA_preprocessed`.
+
+```{r}
+args(read_excel)
+?read_excel
+
+columns <- c("Schluessel", "Straftat", "Gemeindeschluessel", "Stadt_Landkreis", "Kreisart", "erfasste_Faelle_Anzahl", "erfasste_Faelle_100tausend", "ef_Versuche_Anzahl", "ef_Versuche_Prozent", "Schusswaffe_gedroht", "Schusswaffe_geschossen", "Aufklaerung_Anzahl", "Aufklaerungsquote", "TV_insgesamt", "TV_maennlich", "TV_weiblich", "nd_TV_Anzahl", "nd_TV_Anteil", "Sort", "leer","GemSchl", "Gem", "EW")
+
+BKA_preprocessed <- read_excel(here::here("data", "KR-F-01-T01-Kreise-Faelle-HZ_xls (1).xlsx"), 
+                               col_names = columns, 
+                               skip = 9)
+```
+
+Falls die Namen auch immer noch nicht hübsch genug sind, könnt ihr diese auch mit einem Paket
+in eine Form bringen, die eher "tidy-data" enstpricht. Dazu könnt ihr `janitor` nutzen.
+
+```{r}
+janitor::clean_names(BKA_preprocessed)
+```
+Wir belassen es aber bei den vergebenen Namen von oben. Daher auch kein `<-`, wir weisen
+also nichts zu.
+
+## Übersichtsfunktionen
+
+Die folgenden Funktionen geben einen schnellen Überblick über den Datensatz und seine Eigenschaften.
+
+```{r}
+head(BKA_preprocessed)
+str(BKA_preprocessed)
+names(BKA_preprocessed)
+names(BKA_first)
+```
+
+
+## Die Pipe
+
+Mit der Pipe kann das Programmieren intuitiver gestaltet werden. Um die Pipe nutzen zu können, muss das package `magrittr` geladen sein. Dieses ist Teil des `tidyverse` und wird automatisch geladen, wenn wir `library(tidyverse)` ausführen. `glimpse` ist die Übersichtsfunktion von tidyverse.
+
+```{r}
+# package
+library(tidyverse)
+
+# base R
+glimpse(BKA_first)
+
+# tidyverse
+BKA_first %>%
+  glimpse()
+BKA_preprocessed %>%
+  glimpse()
+```
+
+## Attributes
+
+Attributes sind **zusätzliche Informationen zum Objekt**, die in einer Liste gespeichert werden.
+Besonders nützlich sind Attributes, um die Zuordnung von *labels* und *levels* von kategorischen und ordinalen Variablen, oder eine genauere Beschreibung der Variable z.B. den Fragetext zu speichern. 
+
+```{r}
+# Attributes abrufen
+attributes(BKA_preprocessed)                    # Attributes des Datensatzes 
+attributes(BKA_preprocessed$Schluessel)         # Attributes einer spezifischen Variable (noch LEER)
+
+# Beschreibung der Variable hinzufügen - Veränderung des Datensatzes im Viewer anschauen
+attributes(BKA_preprocessed$Gemeindeschluessel)$label <- "numerischer Gemeindeschlüssel (Katalog)"
+
+# labels-levels Zuordnung als named vector als attribute speichern
+## named vector erstellen
+Gemeindeschluessel_labels <- BKA_preprocessed$Gemeindeschluessel            # alle Schlüssel speichern
+names(Gemeindeschluessel_labels) <- BKA_preprocessed$Stadt_Landkreis        # jedem Schlüssel einen Namen mit der entsprechenden geographischen Einheit geben 
+
+# entfernen von Dopplungen (duplicate gibt einen logical vector zurück)
+Gemeindeschluessel_labels <- Gemeindeschluessel_labels[!duplicated(Gemeindeschluessel_labels)] 
+
+## named vector als labels in attributes-Liste speichern
+attributes(BKA_preprocessed$Gemeindeschluessel)$labels <- Gemeindeschluessel_labels
+attributes(BKA_preprocessed$Gemeindeschluessel)                                      # in attributes befindet sich jetzt sowohl eine genauere Beschreibung der Variable als auch ein Vector mit der Zuordnung von Schlüssel und Gemeinde.
+```
+
+**AUFGABE**:
+
+Ihr könnt jetzt Excel-Dateien in R importieren und schon die ersten Verbesserungen/Anpassungen beim Import umsetzen.
+Anbei ein weiteres Package: `readr`. Anders als `readxl` hilft dieses Package beim Import von csv-Dateien (csv - comma seperated values).
+*Wichtig:* Beim Einlesen von csv-Dateien muss immer ein Trennzeichen (hier mit dem Argument `delim`) definiert werden.
+Anbei nochmal die Help-Funktionen, die uns mehr Informationen zu den Funktionen liefern.
+
+*Tipp:* Ihr könnt die Datei importieren, indem Ihr unter dem Reiter `Files` den Datensatz raussucht, anklickt und `Import Dataset` auswählt. *Achtung:* Übernehmt den Code aus dem Fenster unten rechts unbedingt, damit Ihr später noch wisst, wie genau Ihr den Datensatz importiert habt. 
+
+```{r}
+# package
+library(readr)
+args(read_delim)
+?read_delim
+```
+
+Das BKA stellt seine Fallstatistiken auch im csv-format zum Downloaden bereit.
+Mit Hilfe der `read_delim` Funktion sollt Ihr die Datei herunterladen und dabei sicherstellen, dass die Dateinamen stimmen und die Dateitypen für jede Zeile Sinn ergibt (müssen noch nicht die optimalsten Dateitypen sein, aber in die richtige Richtung gehen). Kontrolliert Euren Import anschließend mit Hilfe der Pipe.
+
+Fügt Attributes zu der `Schluessel`-Variable hinzu, eine genauere Beschreibung unter dem Titel `label` und die Zuordnung von Schlüssel und Straftat mithilfe eines named vectors unter dem Titel `labels`.
+Kontrolliert Euer Ergebnis.
+
+Zusatz: Welches (unerwartete) Problem ist beim Importieren aufgetreten?
+Habt Ihr Ideen, wie man dieses Problem lösen kann??
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+# Block 2: Manipulation
+
+In diesem Abschnitt verwenden wir hauptächlich das **dplyr** package, welches ebenfalls ein Core-Bestandteil des `tidyverse` ist.
+
+## dplyr Grundlagen
+
+Im Folgenden seht Ihr die fünf wichtigsten **dplyr**-Funktionen, mit denen Ihr die meisten Datenmanipulationsprobleme lösen könnt. Einige hiervon haben wir vorher schon genutzt.
+
+- `filter()`: Hiermit könnt Ihr Observations nach ihren Werten auswählen/filtern
+- `arrange()`: Ermöglicht es die Rows/Zeilen neu zu ordnen
+- `select()`: Lässt Euch Variablen nach ihren Namen auswählen
+- `mutate()`: Macht es möglich, neue Variablen aus Funktionen bestehender Variablen zu erstellen
+- `summarise()`: Hierdurch lassen sich viele Werte zu einem einzigen Wert zusammenfassen
+
+Diese können alle in Verbindung mit `group_by()` verwendet werden, wodurch sich der Anwendungsbereich jeder Funktion von der Bearbeitung des gesamten Datensatzes auf die Bearbeitung nach Gruppen ändert.
+
+### Filter rows mit `filter()`
+
+```{r}
+BKA_preprocessed %>%
+  dplyr::filter(Straftat == "Straftaten insgesamt", 
+                erfasste_Faelle_Anzahl > 8000)
+```
+
+
+### Arrange rows mit `arrange()`
+
+```{r}
+BKA_preprocessed %>% 
+  dplyr::arrange(desc(Schusswaffe_gedroht))        # was passiert wohl ohne desc(ending)?
+```
+
+
+### Select columns mit `select()`
+
+```{r}
+BKA_preprocessed %>% 
+  dplyr::select(Straftat, 
+                Stadt_Landkreis, 
+                Kreisart, 
+                erfasste_Faelle_Anzahl)
+```
+
+
+### Add new variables mit `mutate()`
+
+```{r}
+BKA_preprocessed %>% 
+  # Auswählen aller Variablen, die mit TV_ beginnen - nützlich um sich tippen zu sparen 
+  dplyr::select(starts_with("TV_")) %>%   
+  # Erstellen der neuen Variablen 
+  dplyr::mutate(TV_anteil_maennlich = (TV_maennlich / TV_insgesamt)*100,
+                TV_anteil_weiblich = (TV_weiblich / TV_insgesamt)*100, 
+                TV_anteil_insgesamt = TV_anteil_maennlich + TV_anteil_weiblich)
+
+BKA_preprocessed %>% 
+  # Auswählen von zwei Variablen 
+  dplyr::select(Aufklaerungsquote, 
+                Stadt_Landkreis) %>% 
+  # Erstellen einer neuen Variablen
+  dplyr::mutate(Aufklaerungsproportion = Aufklaerungsquote / 100) %>% 
+  # Sortieren der Daten im Datensatz nach der neuen Variable
+  dplyr::arrange(desc(Aufklaerungsproportion)) # this is sus
+
+```
+
+
+### Grouped summaries mit `summarise()`
+
+```{r}
+BKA_preprocessed %>% 
+  # Gruppieren nach Kreisarten
+  dplyr::group_by(Kreisart) %>% 
+  # Berechnen des Mittelwerts für jede Gruppe - Achtung NA's!
+  dplyr::summarise(mean_geschossen = mean(Schusswaffe_geschossen, na.rm = TRUE))
+```
+
+### Mutate at scale!
+
+Wenn Ihr mehrere Variablen auf einmal bearbeiten wollt, hilft Euch die Funktion
+`across`. Diese wird mit `mutate` kombiniert. Angenommen Ihr wollt die Statistik 
+ein bisschen fälschen (Gott bewahre!) und die Anzahl der weiblichen, männlichen und
+Gesamtaten gleichzeitig erhöhen. This is the way:
+
+```{r}
+BKA_preprocessed %>% 
+  dplyr::mutate(
+    dplyr::across(.cols = starts_with("TV"), ~ .x + 10000)
+    )
+```
+
+Ihr könnt aber auch einfach alle Variablen zu characters machen. Das ist vielleicht
+hier nicht wirklich nützlich, soll aber die Einfachheit der Funktion demonstrieren.
+
+```{r}
+BKA_preprocessed %>% 
+  dplyr::mutate(
+    dplyr::across(.cols = everything(), ~ as.character(.x))
+    )
+```
+
+
+**AUFGABE**
+
+a) Filtert den Datensatz nach Straßenkriminalität (`Straftat == "Straßenkriminalität"`) und reduziert ihn auf die Variablen Straftat, Stadt_Landkreis, Kreisart, erfasste_Faelle_Anzahl und Aufklaerung_Anzahl.
+
+```{r}
+
+
+
+
+```
+
+b) Filtert den Datensatz nach Kreisfreien Städten ("KfS") und Handtaschenraub. Gruppiert den Datensatz im Anschluss nach den Kreisfreien Städten und fasst die gesamte Anzahl der erfassten Handtaschenraube pro Kreisfreie Städt in einer neuen Variable zusammen.
+```{r}
+
+
+
+
+```
+
+# Block 3: Datentypen & Outlier
+
+Datensätze (*data frames* in R) können Variablen (= Spalten im Datensatz) mit verschiedenen Typen abbilden. Um die Variablen zu bearbeiten (manipulieren) ist es unabdingbar, deren *type* zu kennen. Mittelwert von einer Variable mit Namen zu berechnen ergibt nämlich nur semi-Sinn.
+
+## Passen die Datentypen im BKA_preprocessed-Datensatz?
+
+Hier verwenden wir das **tibble** package, welches ebenfalls ein Core-Bestandteil des `tidyverse` ist.
+
+Fast alle Fuktionen aus dem `tidyverse` erzeugen *tibbles*. Sie sind deshalb eines der vereinheitlichenden Merkmale des `tidyverse`. Ein *data frame* kann mit der `tidyr::as_tibble()` Funktion in ein *tibble* umgewandelt werden.
+Da `read_excel()` jedoch direkt schon ein *tibble* als Output hat, ist dies in diesem Fall nicht nötig.
+
+```{r}
+BKA_preprocessed
+glimpse(BKA_preprocessed)
+```
+
+Der Datentyp **double** ist für die numerischen Variablen, wie die Anzahl der erfassten Fälle oder die Anzahl der Aufklärungen, passend.
+Im Datensatz haben wir auch einige **character** Vektoren (Gemeindeschluessel, Stadt_Landkreis, ...), diese werden wir für die weitere Analyse in factors umwandeln.
+R verwendet **factors**, um kategorische Variablen zu behandeln, d.h. Variablen, die eine feste und bekannte Menge möglicher Werte haben. Sie sind ebenfalls hilfreich, um **character** Vektoren neu zu ordnen und deren Darstellung zu verbessern. Das `forcats`-Package, welches Core-Bestandteil des `tidyverse` ist, umfasst eine Reihe von Funktionen für den Umgang mit **cat**egorical Variablen.
+
+Mehr darüber erfahrt ihr in `vignette("forcats")`. 
+
+Hier fokussieren wir uns auf die Variable *Kreisart* und wandeln diese zunächst in einen *factor* um. Hier könnt entweder eine *list* mit den gültigen *levels* erstellen und diese dem levels Argument zuweisen (`factor(x, levels = list)`) oder dieses Argument nicht spezifizieren, dann werden die levels in alphabetischer Reihenfolge aus den Daten entnommen.
+
+```{r}
+BKA_preprocessed$Kreisart <- BKA_preprocessed$Kreisart %>% 
+  factor()
+
+BKA_preprocessed %>% glimpse()
+
+typeof(BKA_preprocessed$Kreisart)
+unique(BKA_preprocessed$Kreisart)
+attributes(BKA_preprocessed$Kreisart)
+```
+
+Für die nächsten Schritte filtern und gruppieren wir zunächst den *BKA_preprocessed* Datensatz und berechnen die durchschnittliche Anzahl an Stafttaten pro Kreisart.
+
+```{r}
+gesamt_kreisart <- BKA_preprocessed %>%
+  dplyr::filter(Straftat == "Straftaten insgesamt") %>% 
+  dplyr::group_by(Kreisart) %>%
+  dplyr::summarise(
+    Mean_Straftaten = mean(erfasste_Faelle_Anzahl, na.rm = TRUE),
+    Sum_Straftaten = sum(erfasste_Faelle_Anzahl, na.rm = TRUE)
+  )
+
+gesamt_kreisart
+```
+
+## Haben wir NA's im Datensatz?
+
+Um diese Frage zu beantworten und die Häufigkeit deren Auftretens zu bestimmen nutzen wir das **naniar** Package. Dies ist hilfreich für die Zusammenfassung und den Umgang mit NAs in R. Es versucht hierbei so konsistent wie möglich mit den Prinzipien des tidyverse zu sein. 
+Es ist immer wichtig sich das Codebook des Datensatzes genau anzuschauen. In diesem erhaltet ihr Angaben über impliziete NA's. Zum Beispiel Werte wie 99, 98 oder -1, -2, die häufig zur Codierung bestimmter fehlender Werte genutzt werden. Diese für die meisten Analysen expliziert in NAs umgewadelt werden. Nachdem wir dies getan haben, können wir ihr Auftreten im Datensatz inspizieren. 
+
+```{r}
+# Zur Veranschaulichung filtern wir den Datensatz auf Observationen zu den einzelnen Straftaten und erstellen drei neue Variablen mit NA's 
+BKA_withNA <- BKA_preprocessed %>%
+  dplyr::filter(Straftat != "Straftaten insgesamt") %>% 
+  dplyr::select(Straftat, Stadt_Landkreis, Kreisart, erfasste_Faelle_Anzahl,
+         Aufklaerungsquote, Aufklaerung_Anzahl) %>%
+  dplyr::mutate(erfasste_Faelle_Anzahl = case_when(Kreisart != "SK" ~
+                                           erfasste_Faelle_Anzahl),
+         Kreisart = as.character(Kreisart),
+         Kreisart = replace(Kreisart,
+                            erfasste_Faelle_Anzahl > 3000 &
+                              erfasste_Faelle_Anzahl < 4000, 
+                            "Keine Angabe"),
+         Kreisart = replace(Kreisart, 
+                            erfasste_Faelle_Anzahl >= 4000 & 
+                              erfasste_Faelle_Anzahl < 5000,
+                            "Unbekannt"),
+         Stadt_Landkreis = replace(Stadt_Landkreis, 
+                                   (erfasste_Faelle_Anzahl > 3000 &
+                                     erfasste_Faelle_Anzahl < 4000) | 
+                                     Stadt_Landkreis == "Baden-Baden",
+                                   "Keine Angabe"),
+         Stadt_Landkreis = replace(Stadt_Landkreis, 
+                                   (erfasste_Faelle_Anzahl >= 4000 & 
+                                     erfasste_Faelle_Anzahl < 5000) | 
+                                     Stadt_Landkreis == "Ulm", 
+                                   "Nicht erfasst")) %>%
+  naniar::replace_with_na_at(.vars = c("erfasste_Faelle_Anzahl"),
+                     condition = ~.x > 3000 & .x < 5000)
+```
+
+Hierdurch können wir uns einen Überblick über die Möglichkeiten des naniar packages verschaffen
+```{r}
+library(naniar)
+vignette("naniar") # Funktioniert nicht
+vignette(package = "naniar") # Suche nach allen Vignettes zum naniar package
+
+vignette("naniar-visualisation")
+```
+
+Tibble mit der absoluten und prozentualen Anzahl an NA's pro Variable
+```{r}
+BKA_withNA %>% 
+  naniar::miss_var_summary()
+```
+
+Überprüfen der Variable "Kreisart_neu" mit `summary()`
+```{r}
+table(BKA_withNA$Kreisart)
+```
+
+Um die NA's explizit zu codieren können wir zum Beispiel `replace_with_na()` nutzen oder "Kreisart_neu" in einen factor umwandeln und die factor levels hierbei angeben.
+```{r}
+BKA_withNA <- BKA_withNA %>% 
+  naniar::replace_with_na(replace = list(Kreisart = 
+                                           c("Keine Angabe", "Unbekannt")))
+
+table(BKA_withNA$Kreisart)
+BKA_withNA %>% 
+  miss_var_summary()
+```
+
+```{r}
+# Plot mit der Anzahl an NA's pro Variable
+naniar::gg_miss_var(BKA_withNA)
+
+# Visualisierung der Position der NA's im Datensatz
+naniar::vis_miss(BKA_withNA)
+
+# Visualisierung der bei selben Observationen auftretenden NA's
+naniar::gg_miss_upset(BKA_withNA)
+```
+
+
+## Haben wir Outlier im Datensatz?
+
+Outlier sind Beobachtungen, die ungewöhnlich sind; Datenpunkte, die nicht in das Muster zu passen scheinen. Manchmal handelt es sich bei Outlier um Fehler bei der Dateneingabe; manchmal deuten Outlier auf wichtige neue wissenschaftliche Erkenntnisse hin.
+
+Als Beispiel betrachten wir die Aufklärungsquote einzelner Straftatsbestände.
+
+Dazu betrachten wir zunächst die summary der Variable
+```{r}
+summary(BKA_withNA$Aufklaerungsquote)
+```
+
+Auffällig ist der ungewöhnlich hohe maximale Wert von 300, da die Aufklärungsqoute zwischen 0 - 100% liegen sollte.
+
+Wir betracheten deshalb auch noch ein Histogram der Variable:
+```{r}
+BKA_withNA %>% 
+  ggplot2::ggplot() +
+    ggplot2::geom_histogram(mapping = aes(Aufklaerungsquote), binwidth = 0.5)
+```
+
+Bei einer großen Datenmenge sind Outlier in einem Histogramm manchmal schwer zu erkennen. Der einzige Hinweis auf Outlier ist die ungewöhnlich hohe Grenze der x-Achse. Damit die Outlier leicht zu erkennen sind, können wir mit coord_cartesian() auf kleine Werte der y-Achse zoomen.
+```{r}
+BKA_withNA %>% 
+  ggplot2::ggplot() + 
+    ggplot2::geom_histogram(mapping = aes(Aufklaerungsquote), binwidth = 0.5) +
+    ggplot2::coord_cartesian(ylim = c(0, 50))
+```
+
+Bevor wir mit unserer Analyse fortsetzen können, müssen wir das beiligende Codebook nochmals genau anschauen und in Erfahrung bringen, wie es zu diesen Outliern kommen kann.
+
+
+**AUFGABE**:
+
+a) Nutzt den "BKA_withNA" Datensatz und überprüft, ob es bei der Variable "Stadt_Landkreis" implizite NA's gibt. Nutzt `replace_with_na()` um diese explizit als NA's zu klassifizieren.
+Tipp: Um alle impliziten NA's zu finden genügt es die Stadtkreise ("SK") zu betrachten.
+```{r}
+
+
+
+
+
+
+
+
+```
+
+b) Recodet die Variable "Stadt_Landkreis" als factor.
+```{r}
+
+
+```
+
+c) Überprüft mit der `summary()`function, ob es bei der Variable "Aufklaerung_Anzahl" (die Aufklärungsanzahl einzelner Straftatsbestände je Stadtkreis) potenzielle Outlier gibt. 
+Fortgeschritten: Nutzt ein Histogram der Variable "Aufklaerung_Anzahl", um potenzielle Outlier grafisch darzustellen.
+```{r}
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
