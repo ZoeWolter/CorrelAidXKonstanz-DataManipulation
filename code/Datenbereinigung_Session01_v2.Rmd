@@ -370,12 +370,12 @@ BKA_withNA %>%
   naniar::miss_var_summary()
 ```
 
-Überprüfen der Variable "Kreisart_neu" mit `summary()`
+Überprüfen der Variable "Kreisart" mit `summary()`
 ```{r}
 table(BKA_withNA$Kreisart)
 ```
 
-Um die NA's explizit zu codieren können wir zum Beispiel `replace_with_na()` nutzen oder "Kreisart_neu" in einen factor umwandeln und die factor levels hierbei angeben.
+Um die NA's explizit zu codieren können wir zum Beispiel `replace_with_na()` nutzen oder "Kreisart" in einen factor umwandeln und die factor levels hierbei angeben.
 ```{r}
 BKA_withNA <- BKA_withNA %>% 
   naniar::replace_with_na(replace = list(Kreisart = 
