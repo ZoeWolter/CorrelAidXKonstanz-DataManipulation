@@ -329,20 +329,6 @@ unique(BKA_preprocessed$Kreisart)
 attributes(BKA_preprocessed$Kreisart)
 ```
 
-Für die nächsten Schritte filtern und gruppieren wir zunächst den *BKA_preprocessed* Datensatz und berechnen die durchschnittliche Anzahl an Stafttaten pro Kreisart.
-
-```{r}
-gesamt_kreisart <- BKA_preprocessed %>%
-  dplyr::filter(Straftat == "Straftaten insgesamt") %>% 
-  dplyr::group_by(Kreisart) %>%
-  dplyr::summarise(
-    Mean_Straftaten = mean(erfasste_Faelle_Anzahl, na.rm = TRUE),
-    Sum_Straftaten = sum(erfasste_Faelle_Anzahl, na.rm = TRUE)
-  )
-
-gesamt_kreisart
-```
-
 ## Haben wir NA's im Datensatz?
 
 Um diese Frage zu beantworten und die Häufigkeit deren Auftretens zu bestimmen nutzen wir das **naniar** Package. Dies ist hilfreich für die Zusammenfassung und den Umgang mit NAs in R. Es versucht hierbei so konsistent wie möglich mit den Prinzipien des tidyverse zu sein. 
