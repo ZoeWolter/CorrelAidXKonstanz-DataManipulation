@@ -17,10 +17,6 @@ Herzlich Willkommen zu unserem Workshop zur **Datenbereinigung mit R**!
   - Übersicht über den Datensatz verschaffen 
   - Die Pipe
   - Attributes
-- Datentypen und Outlier: 
-  - Vektoren und andere Datentypen
-  - NA's
-  - Outlier finden 
 - Datenmanipulation aka die `dplyr`-Verben:
   - filter
   - arrange
@@ -28,6 +24,10 @@ Herzlich Willkommen zu unserem Workshop zur **Datenbereinigung mit R**!
   - mutate
   - summarize
   - group_by
+- Datentypen und Outlier: 
+  - Vektoren und andere Datentypen
+  - NA's
+  - Outlier finden 
 
 **Tag 2:**
 - Datensätze zusammenfügen:
