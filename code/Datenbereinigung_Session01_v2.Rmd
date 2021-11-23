@@ -168,7 +168,7 @@ In diesem Abschnitt verwenden wir hauptächlich das **dplyr** package, welches e
 
 ## dplyr Grundlagen
 
-Im Folgenden seht Ihr die fünf wichtigsten **dplyr**-Funktionen, mit denen Ihr die meisten Datenmanipulationsprobleme lösen könnt. Einige hiervon haben wir vorher schon genutzt.
+Im Folgenden seht Ihr die fünf wichtigsten **dplyr**-Funktionen, mit denen Ihr die meisten Datenmanipulationsprobleme lösen könnt.
 
 - `filter()`: Hiermit könnt Ihr Observations nach ihren Werten auswählen/filtern
 - `arrange()`: Ermöglicht es die Rows/Zeilen neu zu ordnen
